@@ -17,21 +17,22 @@ export default function Configuracoes() {
   // Estados para controle do Backup
   const [statusBackup, setStatusBackup] = useState<{ tipo: 'sucesso' | 'erro'; msg: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
   const handleExportarExcel = async () => {
     try {
       setStatusBackup({ tipo: 'sucesso', msg: 'Gerando relatório completo...' });
       
       const workbook = new ExcelJS.Workbook();
       
-      // Estilo de cabeçalho padrão
+      // Estilo de cabeçalho padrão com correção de Tipo para o ExcelJS
       const headerStyle = {
         font: { bold: true, color: { argb: 'FFFFFFFF' } },
-        fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2563EB' } },
+        fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2563EB' } } as const, // <-- ADICIONADO "as const" AQUI
         alignment: { horizontal: 'center' }
       };
   
       // Função auxiliar para criar abas
-      const criarAba = async (nomeAba: string, tabela: any[], colunas: any[]) => {
+      const criarAba = async (nomeAba: string, tabela: string, colunas: any[]) => {
         const ws = workbook.addWorksheet(nomeAba);
         ws.columns = colunas;
         ws.getRow(1).eachCell((cell) => {
@@ -88,8 +89,6 @@ export default function Configuracoes() {
         { header: 'DATA SAÍDA', key: 'dataSaida', width: 15 },
         { header: 'DATA RECEBIDO', key: 'dataRecebido', width: 18 },
         { header: 'RECEBIDO POR', key: 'recebidoPor', width: 35 },
-      
-      
       ]);
   
       // 5. ABA: SOS
@@ -122,7 +121,6 @@ export default function Configuracoes() {
     if (numbers.length > 11) numbers = numbers.substring(0, 11); // Limita a 11 dígitos
 
     if (numbers.length > 6) {
-      // Formato (XX) XXXXX-XXXX ou (XX) XXXX-XXXX
       return numbers.replace(/(\d{2})(\d{4,5})(\d{4})/, '($1) $2-$3');
     } else if (numbers.length > 2) {
       return numbers.replace(/(\d{2})(\d{0,4})/, '($1) $2');
@@ -164,7 +162,6 @@ export default function Configuracoes() {
     try {
       setStatusBackup(null);
       
-      // 1. Coleta todas as tabelas atualizadas do Dexie (incluindo v3: pacientes e exames)
       const tabelas = ['encaminhamentos', 'pedidos', 'materiais', 'remessas', 'sos', 'pacientes', 'exames', 'transferencias'];
       const dadosDexie: Record<string, any[]> = {};
 
@@ -172,7 +169,6 @@ export default function Configuracoes() {
         dadosDexie[tabela] = await (db as any).table(tabela).toArray();
       }
 
-      // 2. Coleta os dados de configuração do localStorage
       const dadosConfig = {
         fspss_unidade_padrao: localStorage.getItem('fspss_unidade_padrao') || '',
         fspss_responsavel_padrao: localStorage.getItem('fspss_responsavel_padrao') || '',
@@ -181,7 +177,6 @@ export default function Configuracoes() {
         fspss_mensagem_zap_padrao: localStorage.getItem('fspss_mensagem_zap_padrao') || '',
       };
 
-      // 3. Monta o Objeto final de migração
       const objetoBackup = {
         sistema: 'GestaoClinicaFSPSS',
         dataExportacao: new Date().toLocaleDateString('pt-BR'),
@@ -189,7 +184,6 @@ export default function Configuracoes() {
         bancoDados: dadosDexie
       };
 
-      // 4. Cria o arquivo Blob para download imediato
       const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(objetoBackup, null, 2));
       const downloadAnchor = document.createElement('a');
       downloadAnchor.setAttribute("href", dataStr);
@@ -218,7 +212,6 @@ export default function Configuracoes() {
         const conteudo = evento.target?.result as string;
         const dadosImportados = JSON.parse(conteudo);
 
-        // Validação simples de segurança
         if (dadosImportados.sistema !== 'GestaoClinicaFSPSS') {
           throw new Error('Arquivo de backup inválido ou incompatível.');
         }
@@ -227,24 +220,20 @@ export default function Configuracoes() {
           return;
         }
 
-        // 1. Restaurar configurações no localStorage
         if (dadosImportados.configuracoes) {
           Object.entries(dadosImportados.configuracoes).forEach(([chave, valor]) => {
             localStorage.setItem(chave, valor as string);
           });
           
-          // Atualiza o estado visual da tela na hora
           setUnidade(dadosImportados.configuracoes.fspss_unidade_padrao || '');
           setResponsavel(dadosImportados.configuracoes.fspss_responsavel_padrao || '');
           setCargo(dadosImportados.configuracoes.fspss_cargo_padrao || '');
           setTelefone(dadosImportados.configuracoes.fspss_telefone_padrao || '');
         }
 
-        // 2. Restaurar Tabelas no Dexie IndexedDB
         if (dadosImportados.bancoDados) {
           for (const [nomeTabela, registros] of Object.entries(dadosImportados.bancoDados)) {
             if (Array.isArray(registros)) {
-              // Limpa os registros antigos e insere os novos
               await (db as any).table(nomeTabela).clear();
               await (db as any).table(nomeTabela).bulkAdd(registros);
             }
@@ -252,8 +241,6 @@ export default function Configuracoes() {
         }
 
         setStatusBackup({ tipo: 'sucesso', msg: 'Dados importados e restaurados com sucesso! Recarregando...' });
-        
-        // Recarrega a página após 2 segundos
         setTimeout(() => window.location.reload(), 2000);
 
       } catch (error: any) {
@@ -286,7 +273,7 @@ export default function Configuracoes() {
         {salvo && (
           <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg flex items-center gap-2 text-xs font-bold uppercase tracking-wide animate-fade-in">
             <CheckCircle2 size={16} className="text-emerald-600" />
-            Configurações padrão atualizadas com sucesso!
+            Configurações padrão updated com sucesso!
           </div>
         )}
 
@@ -327,11 +314,12 @@ export default function Configuracoes() {
               <Upload size={14} className="text-emerald-600" />
               Importar Dados
             </button>
+            
             {/* BOTÃO EXPORTAR EXCEL */}
             <button
               type="button"
               onClick={handleExportarExcel}
-              className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg py-2.5 px-4 text-xs font-black uppercase tracking-wider transition-colors"
+              className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg py-2.5 px-4 text-xs font-black uppercase tracking-wider transition-colors col-span-1 sm:col-span-2 cursor-pointer"
             >
               <Download size={14} />
               Exportar p/ Excel (.xlsx)
