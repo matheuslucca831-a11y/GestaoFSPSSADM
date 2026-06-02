@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '@/db'; 
 import { logoFSPSS } from '@/app/imagens';
+
 interface DadosSOS {
   numeroOS: string;
   ano: string;
@@ -17,45 +18,49 @@ interface DadosSOS {
 
 export default function GerarSOS() {
   const [loading, setLoading] = useState(false);
+  const [nomeLembrado, setNomeLembrado] = useState('');
+  const [cargoLembrado, setCargoLembrado] = useState('');
+  const [mostrarSugestaoDados, setMostrarSugestaoDados] = useState(false);
+
   const [form, setForm] = useState<DadosSOS>({
     numeroOS: '001',
     ano: new Date().getFullYear().toString(),
-    unidade: 'USF BOIÇUCANGA I',
+    unidade: '',
     descricaoServico: '',
     observacao: '',
     dataSolicitacao: new Date().toLocaleDateString('pt-BR'),
-    nomeSolicitante: 'INSERA O NOME NA ABA DE CONFIGURAÇÕES',
-    cargoSolicitante: 'INSERA O CARGO NA ABA DE CONFIGURAÇÕES',
+    nomeSolicitante: '',
+    cargoSolicitante: '',
     contatoSolicitante: '',
   });
 
   const anoAtual = form.ano;
 
   useEffect(() => {
-    const unidadeSalva = localStorage.getItem('fspss_unidade_padrao');
-    const responsavelSalvo = localStorage.getItem('fspss_responsavel_padrao');
-    const cargoSalvo = localStorage.getItem('fspss_cargo_padrao');
-    const telefoneSalvo = localStorage.getItem('fspss_telefone_padrao');
+    const unidadeSalva = localStorage.getItem('fspss_unidade_padrao') || '';
+    const telefoneSalvo = localStorage.getItem('fspss_telefone_padrao') || '';
+    const nomeSalvo = localStorage.getItem('fspss_sos_nome_padrao') || '';
+    const cargoSalvo = localStorage.getItem('fspss_sos_cargo_padrao') || '';
+
+    setNomeLembrado(nomeSalvo);
+    setCargoLembrado(cargoSalvo);
 
     setForm(prev => ({
       ...prev,
-      unidade: unidadeSalva ? unidadeSalva.toUpperCase() : prev.unidade,
-      nomeSolicitante: responsavelSalvo ? responsavelSalvo.toUpperCase() : prev.nomeSolicitante,
-      cargoSolicitante: cargoSalvo ? cargoSalvo.toUpperCase() : prev.cargoSolicitante,
-      contatoSolicitante: telefoneSalvo ? telefoneSalvo.toUpperCase() : prev.contatoSolicitante,
+      unidade: unidadeSalva.toUpperCase() || 'USF BOIÇUCANGA I',
+      nomeSolicitante: nomeSalvo.toUpperCase(),
+      cargoSolicitante: cargoSalvo.toUpperCase(),
+      contatoSolicitante: telefoneSalvo,
     }));
 
     async function definirProximoNumeroOS() {
       try {
         const registrosDoAno = await db.table('sos')
-          .where('ano')
-          .equals(anoAtual)
-          .toArray();
+          .where('ano').equals(anoAtual).toArray();
 
         if (registrosDoAno.length > 0) {
           const numeros = registrosDoAno.map(r => parseInt(r.numeroOS, 10));
-          const maiorNumero = Math.max(...numeros);
-          const proximo = maiorNumero + 1;
+          const proximo = Math.max(...numeros) + 1;
           setForm(prev => ({ ...prev, numeroOS: String(proximo).padStart(3, '0') }));
         } else {
           setForm(prev => ({ ...prev, numeroOS: '001' }));
@@ -67,6 +72,34 @@ export default function GerarSOS() {
 
     definirProximoNumeroOS();
   }, [anoAtual]);
+
+  const handleVerificarMudanca = () => {
+    const nomeAtual = form.nomeSolicitante.trim().toUpperCase();
+    const cargoAtual = form.cargoSolicitante.trim().toUpperCase();
+    
+    if (
+      (nomeAtual && nomeAtual !== nomeLembrado.toUpperCase()) || 
+      (cargoAtual && cargoAtual !== cargoLembrado.toUpperCase())
+    ) {
+      setMostrarSugestaoDados(true);
+    }
+  };
+
+  const handleLembrarDados = () => {
+    const nomeAtual = form.nomeSolicitante.trim().toUpperCase();
+    const cargoAtual = form.cargoSolicitante.trim().toUpperCase();
+    
+    localStorage.setItem('fspss_sos_nome_padrao', nomeAtual);
+    localStorage.setItem('fspss_sos_cargo_padrao', cargoAtual);
+    
+    setNomeLembrado(nomeAtual);
+    setCargoLembrado(cargoAtual);
+    setMostrarSugestaoDados(false);
+  };
+
+  const handleNaoLembrarDados = () => {
+    setMostrarSugestaoDados(false);
+  };
 
   const handleSalvarEServir = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -252,6 +285,62 @@ export default function GerarSOS() {
             </div>
           </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1.5">Nome do Solicitante</label>
+              <input
+                type="text"
+                placeholder="NOME"
+                value={form.nomeSolicitante}
+                onChange={(e) => {
+                  setMostrarSugestaoDados(false);
+                  setForm({...form, nomeSolicitante: e.target.value.toUpperCase()});
+                }}
+                onBlur={handleVerificarMudanca}
+                className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white uppercase font-bold text-gray-900"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1.5">Cargo do Solicitante</label>
+              <input
+                type="text"
+                placeholder="EX: AUXILIAR ADMINISTRATIVO"
+                value={form.cargoSolicitante}
+                onChange={(e) => {
+                  setMostrarSugestaoDados(false);
+                  setForm({...form, cargoSolicitante: e.target.value.toUpperCase()});
+                }}
+                onBlur={handleVerificarMudanca}
+                className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white uppercase font-bold text-gray-900"
+              />
+            </div>
+          </div>
+
+          {mostrarSugestaoDados && (
+            <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 gap-3">
+              <span className="text-[11px] text-blue-800 font-bold">
+                Deseja usar <span className="text-blue-600">{form.nomeSolicitante.trim()}</span> e <span className="text-blue-600">{form.cargoSolicitante.trim()}</span> como padrão?
+              </span>
+              <div className="flex gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleLembrarDados}
+                  className="text-[10px] font-black uppercase bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  Sim
+                </button>
+                <button
+                  type="button"
+                  onClick={handleNaoLembrarDados}
+                  className="text-[10px] font-black uppercase bg-white text-gray-600 border border-gray-300 px-3 py-1 rounded-md hover:bg-gray-100 transition-colors"
+                >
+                  Não
+                </button>
+              </div>
+            </div>
+          )}
+
           <div>
             <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1.5">Descrição Detalhada do Serviço</label>
             <textarea 
@@ -277,12 +366,12 @@ export default function GerarSOS() {
 
           <div className="bg-blue-50/50 border border-blue-100 p-4 rounded-xl grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-bold text-gray-700">
             <div>
-              <span className="text-gray-400 block text-[9px] font-black uppercase tracking-wider mb-0.5">Solicitante Padrão:</span>
-              <span className="text-gray-900 uppercase">{form.nomeSolicitante}</span>
+              <span className="text-gray-400 block text-[9px] font-black uppercase tracking-wider mb-0.5">Solicitante:</span>
+              <span className="text-gray-900 uppercase">{form.nomeSolicitante || '—'}</span>
             </div>
             <div>
               <span className="text-gray-400 block text-[9px] font-black uppercase tracking-wider mb-0.5">Cargo / Função:</span>
-              <span className="text-gray-900 uppercase">{form.cargoSolicitante}</span>
+              <span className="text-gray-900 uppercase">{form.cargoSolicitante || '—'}</span>
             </div>
             <div>
               <span className="text-gray-400 block text-[9px] font-black uppercase tracking-wider mb-0.5">Data de Abertura:</span>
