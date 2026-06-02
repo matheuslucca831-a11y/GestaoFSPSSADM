@@ -11,13 +11,12 @@ export default function ConfiguracaoInicial() {
   const [unidade, setUnidade] = useState('');
   const [telefone, setTelefone] = useState('');
 
-  const formatarTelefone = (value) => {
+  const formatarTelefone = (value: string): string => {
     let numbers = value.replace(/\D/g, '');
     if (numbers.length > 11) numbers = numbers.substring(0, 11);
     if (numbers.length > 6) return numbers.replace(/(\d{2})(\d{4,5})(\d{4})/, '($1) $2-$3');
-    else if (numbers.length > 2) return numbers.replace(/(\d{2})(\d{0,4})/, '($1) $2');
-    else if (numbers.length > 0) return numbers.replace(/(\d{0,2})/, '($1');
-    return numbers;
+    
+    return numbers; // Garante o retorno caso o número seja curto
   };
 
   useEffect(() => {
