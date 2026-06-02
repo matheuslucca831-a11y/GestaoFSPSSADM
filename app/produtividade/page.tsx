@@ -4,10 +4,10 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Printer, CalendarDays, User, Trash2, Edit, Save, X } from 'lucide-react';
 import PizZip from 'pizzip';
 import { saveAs } from 'file-saver';
-import { db } from '../../db'; // 👈 IMPORTANTE: Ajuste o caminho do seu arquivo db aqui
+import { db } from '../../db'; // Ajuste o caminho do seu arquivo db aqui se necessário
 
 interface Profissional {
-  id?: number; // 👈 Dexie usa número auto-incrementável
+  id?: number; // Dexie usa número auto-incrementável
   nome: string;
   matricula: string;
   vinculo: string;
@@ -32,7 +32,8 @@ export default function RelatorioProdutividade() {
   useEffect(() => {
     async function carregarDados() {
       try {
-        const dadosDB = await db.profissionais.toArray();
+        // CORRIGIDO: usando .table() para evitar erro de tipo no TypeScript
+        const dadosDB = await db.table('profissionais').toArray();
         setProfissionais(dadosDB);
       } catch (error) {
         console.error("Erro ao carregar profissionais do banco:", error);
@@ -46,7 +47,8 @@ export default function RelatorioProdutividade() {
 
   // Função para recarregar a lista atualizada do banco de dados
   const atualizarListaDaTela = async () => {
-    const listaAtualizada = await db.profissionais.toArray();
+    // CORRIGIDO: usando .table() para evitar erro de tipo no TypeScript
+    const listaAtualizada = await db.table('profissionais').toArray();
     setProfissionais(listaAtualizada);
   };
 
@@ -54,14 +56,14 @@ export default function RelatorioProdutividade() {
     e.preventDefault();
     try {
       if (form.id) {
-        // Se tem ID, o Dexie atualiza o registro existente
-        await db.profissionais.put({
+        // CORRIGIDO: Se tem ID, atualiza usando o método .table()
+        await db.table('profissionais').put({
           ...form,
           id: Number(form.id) // garante que vai como número
         });
       } else {
-        // Se não tem ID, o Dexie gera um novo automaticamente por causa do ++id
-        await db.profissionais.add({
+        // CORRIGIDO: Se não tem ID, insere um novo usando o método .table()
+        await db.table('profissionais').add({
           nome: form.nome,
           matricula: form.matricula,
           vinculo: form.vinculo,
@@ -84,7 +86,8 @@ export default function RelatorioProdutividade() {
     if (!id) return;
     if (confirm('Tem certeza que deseja remover este profissional do banco de dados?')) {
       try {
-        await db.profissionais.delete(id);
+        // CORRIGIDO: Removendo o registro usando o método .table()
+        await db.table('profissionais').delete(id);
         await atualizarListaDaTela();
       } catch (error) {
         console.error("Erro ao deletar:", error);
