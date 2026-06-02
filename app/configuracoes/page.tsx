@@ -31,10 +31,10 @@ export default function Configuracoes() {
       };
   
       // Função auxiliar para criar abas
-      const criarAba = async (nomeAba, tabela, colunas) => {
+      const criarAba = async (nomeAba: string, tabela: any[], colunas: any[]) => {
         const ws = workbook.addWorksheet(nomeAba);
         ws.columns = colunas;
-        ws.getRow(1).eachCell((cell) => { 
+        ws.getRow(1).eachCell((cell) => {
           cell.fill = headerStyle.fill; 
           cell.font = headerStyle.font; 
         });
