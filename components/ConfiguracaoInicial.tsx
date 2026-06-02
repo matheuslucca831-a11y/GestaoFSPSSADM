@@ -16,7 +16,7 @@ export default function ConfiguracaoInicial() {
     if (numbers.length > 11) numbers = numbers.substring(0, 11);
     if (numbers.length > 6) return numbers.replace(/(\d{2})(\d{4,5})(\d{4})/, '($1) $2-$3');
     
-    return numbers; // Garante o retorno caso o número seja curto
+    return numbers; // Garante o retorno caso o usuário ainda esteja digitando o DDD
   };
 
   useEffect(() => {
